@@ -370,12 +370,6 @@ class Property(Cell):
         self.isMonopoly = False
         self.hasHouses = 0
 
-    def add_property_to_player(self, player):
-        if self.group in player.properties:
-            player.properties[self.group].append(self.name)
-        else:
-            player.properties[self.group] = [self.name]
-
     def action(self, player, rent, board):
         """Player ended on a property"""
 
@@ -397,7 +391,6 @@ class Property(Cell):
                 )
                 player.take_money(self.cost_base, board, BANK_NAME)
                 self.owner = player
-                self.add_property_to_player(self, player)
                 board.recalculateAfterPropertyChange()
             # Remove auction functionality 
             # else: 
