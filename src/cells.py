@@ -370,6 +370,12 @@ class Property(Cell):
         self.isMonopoly = False
         self.hasHouses = 0
 
+    def add_property_to_player(self, player):
+        if self.group in player.properties:
+            player.properties[self.group].append(self.name)
+        else:
+            player.properties[self.group] = [self.name]
+
     def action(self, player, rent, board):
         """Player ended on a property"""
 
@@ -391,50 +397,52 @@ class Property(Cell):
                 )
                 player.take_money(self.cost_base, board, BANK_NAME)
                 self.owner = player
+                self.add_property_to_player(self, player)
                 board.recalculateAfterPropertyChange()
-            else:
-                current_auction_price = 10
-                while True:
-                    players_who_want_the_property = []
-                    for board_player in board.players:
-                        if board_player.wants_to_buy(
-                            self.cost_base, current_auction_price, self.group, board
-                        ):
-                            players_who_want_the_property.append(board_player)
-                    if len(players_who_want_the_property) == 1:
-                        player_money_str = ""
-                        for board_player in board.players:
-                            player_money_str += (
-                                board_player.name
-                                + ": "
-                                + str(board_player.money)
-                                + ", "
-                            )
+            # Remove auction functionality 
+            # else: 
+            #     current_auction_price = 10
+            #     while True:
+            #         players_who_want_the_property = []
+            #         for board_player in board.players:
+            #             if board_player.wants_to_buy(
+            #                 self.cost_base, current_auction_price, self.group, board
+            #             ):
+            #                 players_who_want_the_property.append(board_player)
+            #         if len(players_who_want_the_property) == 1:
+            #             player_money_str = ""
+            #             for board_player in board.players:
+            #                 player_money_str += (
+            #                     board_player.name
+            #                     + ": "
+            #                     + str(board_player.money)
+            #                     + ", "
+            #                 )
 
-                        self.log.write(
-                            players_who_want_the_property[0].name
-                            + " buys property "
-                            + self.name
-                            + " for $"
-                            + str(current_auction_price),
-                            3,
-                        )
-                        players_who_want_the_property[0].take_money(
-                            self.cost_base, board, BANK_NAME
-                        )
-                        self.owner = players_who_want_the_property[0]
-                        board.recalculateAfterPropertyChange()
-                        # print(player_money_str)
-                        # print(players_who_want_the_property[0].name + " buys property " +
-                        #                self.name + " for $" + str(current_auction_price) + " valued at $" +
-                        #                str(self.cost_base))
-                        break
-                    elif len(players_who_want_the_property) == 0:
-                        self.log.write("property for auction, but nobody wanted it", 3)
-                        break
-                    else:
-                        current_auction_price += 5
-            return
+            #             self.log.write(
+            #                 players_who_want_the_property[0].name
+            #                 + " buys property "
+            #                 + self.name
+            #                 + " for $"
+            #                 + str(current_auction_price),
+            #                 3,
+            #             )
+            #             players_who_want_the_property[0].take_money(
+            #                 self.cost_base, board, BANK_NAME
+            #             )
+            #             self.owner = players_who_want_the_property[0]
+            #             board.recalculateAfterPropertyChange()
+            #             # print(player_money_str)
+            #             # print(players_who_want_the_property[0].name + " buys property " +
+            #             #                self.name + " for $" + str(current_auction_price) + " valued at $" +
+            #             #                str(self.cost_base))
+            #             break
+            #         elif len(players_who_want_the_property) == 0:
+            #             self.log.write("property for auction, but nobody wanted it", 3)
+            #             break
+            #         else:
+            #             current_auction_price += 5
+            # return
 
         # someone else's property - pay the rent
         else:

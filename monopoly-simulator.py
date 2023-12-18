@@ -28,7 +28,13 @@ log = Log()
 def one_game(run_number):
 
     game_rules = GameRulesConfig()
-    player_behaviours = PlayerBehaviourConfig(0)
+
+    normal_player_behaviours = PlayerBehaviourConfig(0)
+    rulebased_player_behaviours = RuleBasedPlayerBehaviourConfig(0)
+    random_player_behaviours = RandomPlayerBehaviourConfig(0)
+    # Create 4 players with set behaviors
+    player_behaviors = [rulebased_player_behaviours, normal_player_behaviours, normal_player_behaviours, normal_player_behaviours]
+
 
     # create players
     players = []
@@ -45,7 +51,7 @@ def one_game(run_number):
         else:
             starting_money = game_rules.starting_money_per_player[i]
 
-        players.append(Player(names[i], starting_money, player_behaviours, sim_conf, log))
+        players.append(Player(names[i], starting_money, player_behaviors[i], sim_conf, log))
             
     # create board
     game_board = Board(players, game_rules, log)

@@ -22,7 +22,7 @@ class WriteMode(Enum):
 class SimulationConfig(MonopolyConfig):
     # simulation settings
     n_players = 4
-    n_moves = 1000
+    n_moves = 120
     n_simulations = 1000
     seed = None  #
     shuffle_players = True
@@ -66,3 +66,36 @@ class PlayerBehaviourConfig(MonopolyConfig):
     refuse_to_trade = False  # willing to trade property
     three_way_trade = True  # willing to trade property three-way
     build_randomly = False
+    advanced_jail_strat = False
+
+class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
+    # players behaviour settings based on our self evaluated methods
+    def __init__(self, id):
+        self.id = id
+
+    build_expensive = False
+    build_cheapest = False
+    refuse_property = ""  # refuse to buy this group
+    build_only_three_houses = False
+    unspendable_cash = 0  # unspendable money
+    unmortgage_coeff = 3  # repay mortgage if you have times this cash
+    refuse_to_trade = False  # willing to trade property
+    three_way_trade = True  # willing to trade property three-way
+    build_randomly = False
+    advanced_jail_strat = True
+
+class RandomPlayerBehaviourConfig(MonopolyConfig):
+    # players behaviour settings, actions will be random
+    def __init__(self, id):
+        self.id = id
+
+    build_expensive = False
+    build_cheapest = False
+    refuse_property = ""  # refuse to buy this group
+    build_only_three_houses = False
+    unspendable_cash = 0  # unspendable money
+    unmortgage_coeff = 3  # repay mortgage if you have times this cash
+    refuse_to_trade = False  # willing to trade property
+    three_way_trade = True  # willing to trade property three-way
+    build_randomly = False
+    advanced_jail_strat = False

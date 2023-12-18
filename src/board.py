@@ -580,6 +580,27 @@ class Board:
                     ):
                         offered.append(i)
         return sorted(offered)
+    
+    # calculate utility of every player based on current plots owned and funds
+    def calcPlayerUtilities(self):
+        property_worth = {"brown": 12, 'lightblue': 14, 'pink': 16, 'orange': 18, 'red': 20, 'yellow': 22, 'green': 24, 'indigo': 26}
+        player_utilities = {} # playernames: utility value
+        # Calculate utility from money each player has
+        for player in self.players:
+            player_utilities[player.name] = 0
+            if player.money <= 500:
+                player_utilities[player.name] += player.money / 100
+            else: # less utility after >$500 in the bank
+                player_utilities[player.name] += 5 + ((player.money - 500) / 250)
+        # Calculate utility from properties/houses/hotels owned by players
+        for i in range(len(self.b)):
+            plot = self.b[i]
+            if type(plot) == Property:
+                if plot.owner != "":
+                    player_utilities[plot.owner] += self.shareOfGroup(plot.group, plot.owner) * property_worth[plot.group]
+                    player_utilities[plot.owner] += plot.hasHouses * (property_worth / 10) # Scale result of houses/hotel
+        return player_utilities
+
 
     # update isMonopoly status for all plots
     def checkMonopolies(self):

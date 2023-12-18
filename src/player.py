@@ -26,6 +26,7 @@ class Player:
         self.cash_limit = behaviour.unspendable_cash
         self.behaviour = behaviour
         self.sim_conf = simulation_conf
+        self.turns = 0 # for advanced jail strat
 
     def __str__(self):
         return (
@@ -42,12 +43,15 @@ class Player:
 
     def get_name(self):
         return self.name
+    
+    def add_turn(self):
+        self.turns += 1
 
     # add money (salary, receive rent etc)
     def add_money(self, amount):
         self.money += amount
 
-    # subtract money (pay reny, buy property etc)
+    # subtract money (pay rent, buy property etc)
     def take_money(self, amount, board, action_origin):
         amount_taken = min(self.money, amount)
         self.money -= amount
@@ -59,15 +63,28 @@ class Player:
             amount_taken = amount
         return amount_taken
 
-    # subtract money (pay reny, buy property etc)
+    # subtract money (pay rent, buy property etc)
     def move_to(self, position):
         self.position = position
         self.log.write(self.name + " moves to cell " + str(position), 3)
 
+    # Calulate utility of current player
+    def calc_self_utility(self, board):
+        player_utilities = board.calcPlayerUtilities()
+        self_utility = 0
+        for player in player_utilities:
+            # Add current players utility unscaled
+            if player == self.name:
+                self_utility += player_utilities[player]
+            # Subtract scaled utility of every other player 
+            else:
+                self_utility -= (player_utilities[player] / 10)
+        return self_utility
+        
     # make a move procedure
-
     def make_a_move(self, board):
         goAgain = False
+        justLeftJail = False
 
         # Only proceed if player is alive (not bankrupt)
         if self.is_bankrupt:
@@ -80,11 +97,11 @@ class Player:
         self.log.write("Player " + self.name + " goes:", 2)
 
         # non-board actions: Trade, unmortgage, build
-        # repay mortgage if you have X times more cashe than mortgage    cost
+        # repay mortgage if you have X times more cashe than mortgage cost
         while self.repay_mortgage(board):
             board.recalculateAfterPropertyChange()
 
-        # build houses while you have pare cash
+        # build houses while you have spare cash
         while board.improveProperty(self, board, self.money - self.cash_limit):
             pass
 
@@ -103,6 +120,7 @@ class Player:
         # roll dice
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
+    
         self.log.write(
             self.name
             + " rolls "
@@ -113,9 +131,102 @@ class Player:
             + str(dice1 + dice2),
             3,
         )
+        self.add_turn()
 
-        # doubles
-        if dice1 == dice2 and not self.in_jail:
+        # Jail situation:
+        # Stay unless you roll doubles, unless advanced behavior
+        if self.in_jail:
+            # If early on in game, get out ASAP if you have enough to buy properties after
+            if self.behaviour.advanced_jail_strat and self.turns <= 20:
+                # Try using GOOJF cards first
+                if self.has_jail_card_chance:
+                    self.has_jail_card_chance = False
+                    board.chanceCards.append(1)  # return the card
+                    self.log.write(
+                        self.name + " uses the Chance GOOJF card to get out of jail", 3
+                    )
+                elif self.has_jail_card_community:
+                    self.has_jail_card_community = False
+                    board.communityCards.append(6)  # return the card
+                    self.log.write(
+                    self.name + " uses the Community GOOJF card to get out of jail", 3
+                    )
+                # Else if you have enough to buy a property outside of it, pay fine
+                elif self.money >= (140 + board.game_conf.jail_fine):
+                    self.take_money(
+                        board.game_conf.jail_fine, board, BANK_NAME
+                    )  # get out on fine
+                    self.days_in_jail = 0
+                    self.log.write(self.name + " pays fine and gets out of jail", 3)
+                # If no other methods work, doubles needed
+                elif dice1 != dice2:
+                    self.days_in_jail += 1
+                    if self.days_in_jail < 3:
+                        self.log.write(self.name + " spends this turn in jail", 3)
+                        return False  # skip turn in jail
+                    else:
+                        self.take_money(
+                            board.game_conf.jail_fine, board, BANK_NAME
+                        )  # get out on fine
+                        self.days_in_jail = 0
+                        self.log.write(self.name + " pays fine and gets out of jail", 3)
+                else:  # get out of jail on doubles
+                    self.log.write(self.name + " rolls double and gets out of jail", 3)
+                    self.days_in_jail = 0
+                    goAgain = False
+                    justLeftJail = True
+            # If late game, stay in jail as long as possible by just rolling(not using GOOJF card)
+            elif self.behaviour.advanced_jail_strat and self.turns >= 40:
+                if dice1 != dice2:
+                    self.days_in_jail += 1
+                    if self.days_in_jail < 3:
+                        self.log.write(self.name + " spends this turn in jail", 3)
+                        return False  # skip turn in jail
+                    else:
+                        self.take_money(
+                            board.game_conf.jail_fine, board, BANK_NAME
+                        )  # get out on fine
+                        self.days_in_jail = 0
+                        self.log.write(self.name + " pays fine and gets out of jail", 3)
+                else:  # get out of jail on doubles
+                    self.log.write(self.name + " rolls double and gets out of jail", 3)
+                    self.days_in_jail = 0
+                    goAgain = False
+                    justLeftJail = True
+            # If not advanced strat or midgame, stay in jail unless GOOJF card
+            else:
+                if self.has_jail_card_chance:
+                    self.has_jail_card_chance = False
+                    board.chanceCards.append(1)  # return the card
+                    self.log.write(
+                        self.name + " uses the Chance GOOJF card to get out of jail", 3
+                    )
+                elif self.has_jail_card_community:
+                    self.has_jail_card_community = False
+                    board.communityCards.append(6)  # return the card
+                    self.log.write(
+                        self.name + " uses the Community GOOJF card to get out of jail", 3
+                    )
+                elif dice1 != dice2:
+                    self.days_in_jail += 1
+                    if self.days_in_jail < 3:
+                        self.log.write(self.name + " spends this turn in jail", 3)
+                        return False  # skip turn in jail
+                    else:
+                        self.take_money(
+                            board.game_conf.jail_fine, board, BANK_NAME
+                        )  # get out on fine
+                        self.days_in_jail = 0
+                        self.log.write(self.name + " pays fine and gets out of jail", 3)
+                else:  # get out of jail on doubles
+                    self.log.write(self.name + " rolls double and gets out of jail", 3)
+                    self.days_in_jail = 0
+                    goAgain = False
+                    justLeftJail = True
+            self.in_jail = False
+
+        # doubles, don't count if rolled in jail
+        if dice1 == dice2 and not self.in_jail and not justLeftJail:
             goAgain = True  # go again if doubles
             self.consequent_doubles += 1
             self.log.write(
@@ -129,38 +240,6 @@ class Player:
                 return False
         else:
             self.consequent_doubles = 0  # reset doubles counter
-
-        # Jail situation:
-        # Stay unless you roll doubles
-        if self.in_jail:
-            if self.has_jail_card_chance:
-                self.has_jail_card_chance = False
-                board.chanceCards.append(1)  # return the card
-                self.log.write(
-                    self.name + " uses the Chance GOOJF card to get out of jail", 3
-                )
-            elif self.has_jail_card_community:
-                self.has_jail_card_community = False
-                board.communityCards.append(6)  # return the card
-                self.log.write(
-                    self.name + " uses the Community GOOJF card to get out of jail", 3
-                )
-            elif dice1 != dice2:
-                self.days_in_jail += 1
-                if self.days_in_jail < 3:
-                    self.log.write(self.name + " spends this turn in jail", 3)
-                    return False  # skip turn in jail
-                else:
-                    self.take_money(
-                        board.game_conf.jail_fine, board, BANK_NAME
-                    )  # get out on fine
-                    self.days_in_jail = 0
-                    self.log.write(self.name + " pays fine and gets out of jail", 3)
-            else:  # get out of jail on doubles
-                self.log.write(self.name + " rolls double and gets out of jail", 3)
-                self.days_in_jail = 0
-                goAgain = False
-        self.in_jail = False
 
         # move the piece
         self.position += dice1 + dice2
