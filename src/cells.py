@@ -380,7 +380,7 @@ class Property(Cell):
 
         # Property up for sale
         elif self.owner == "":
-            if player.wants_to_buy(self.cost_base, self.cost_base, self.group, board) and ((self.behavior.random and random.randint(0, 1)) or not self.behaviour.random):
+            if player.wants_to_buy(self.cost_base, self.cost_base, self.group, board) and ((player.behaviour.random and random.randint(0, 1)) or not player.behaviour.random):
                 self.log.write(
                     player.name
                     + " buys property "

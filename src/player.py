@@ -98,12 +98,12 @@ class Player:
 
         # non-board actions: Trade, unmortgage, build
         # repay mortgage if you have X times more cash than mortgage cost
-        if (self.behavior.random and random.randint(0, 1)) or not self.behaviour.random:
+        if (self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random:
             while self.repay_mortgage(board):
                     board.recalculateAfterPropertyChange()
 
         # build houses while you have spare cash
-        if (self.behavior.random and random.randint(0, 1)) or not self.behaviour.random:
+        if (self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random:
             while board.improveProperty(self, board, self.money - self.cash_limit):
                 pass
         
@@ -111,7 +111,7 @@ class Player:
         # Calculate property player wants to get and ready to give away
         if self.behaviour.refuse_to_trade:
                 pass  # Experiement: do not trade
-        elif not self.behaviour.refuse_to_trade and ((self.behavior.random and random.randint(0, 1)) or not self.behaviour.random):
+        elif not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random):
             #  Make a trade
             if (
                 not self.two_way_trade(board)
@@ -198,20 +198,20 @@ class Player:
                     justLeftJail = True
             # If not advanced strat or midgame, stay in jail unless GOOJF card
             else:
-                if self.has_jail_card_chance and ((self.behavior.random and random.randint(0, 1)) or not self.behaviour.random):
+                if self.has_jail_card_chance and ((self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random):
                     self.has_jail_card_chance = False
                     board.chanceCards.append(1)  # return the card
                     self.log.write(
                         self.name + " uses the Chance GOOJF card to get out of jail", 3
                     )
-                elif self.has_jail_card_community and ((self.behavior.random and random.randint(0, 1)) or not self.behaviour.random):
+                elif self.has_jail_card_community and ((self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random):
                     self.has_jail_card_community = False
                     board.communityCards.append(6)  # return the card
                     self.log.write(
                         self.name + " uses the Community GOOJF card to get out of jail", 3
                     )
                 # If random behavior, random chance to pay fine
-                elif self.behavior.random and random.randint(0, 1):
+                elif self.behaviour.random and random.randint(0, 1):
                     self.take_money(
                         board.game_conf.jail_fine, board, BANK_NAME
                     )  # get out on fine

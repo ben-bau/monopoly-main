@@ -33,7 +33,7 @@ def one_game(run_number):
     rulebased_player_behaviours = RuleBasedPlayerBehaviourConfig(0)
     random_player_behaviours = RandomPlayerBehaviourConfig(0)
     # Create 4 players with set behaviors
-    player_behaviors = [rulebased_player_behaviours, normal_player_behaviours, normal_player_behaviours, normal_player_behaviours]
+    player_behaviors = [random_player_behaviours, normal_player_behaviours, normal_player_behaviours, normal_player_behaviours]
 
 
     # create players
