@@ -581,7 +581,8 @@ class Board:
                         offered.append(i)
         return sorted(offered)
     
-    # calculate utility of every player based on current plots owned and funds
+    # Calculate initial utility of every player based on current plots owned and funds
+    # To be used in the calc_self_utlility in player.py
     def calcPlayerUtilities(self):
         property_worth = {"brown": 12, 'lightblue': 14, 'pink': 16, 'orange': 18, 'red': 20, 'yellow': 22, 'green': 24, 'indigo': 26}
         player_utilities = {} # playernames: utility value
@@ -598,7 +599,7 @@ class Board:
             if type(plot) == Property:
                 if plot.owner != "":
                     player_utilities[plot.owner] += self.shareOfGroup(plot.group, plot.owner) * property_worth[plot.group]
-                    player_utilities[plot.owner] += plot.hasHouses * (property_worth / 10) # Scale result of houses/hotel
+                    player_utilities[plot.owner] += plot.hasHouses * (property_worth[plot.group] / 10) # Scale result of houses/hotel
         return player_utilities
 
 
