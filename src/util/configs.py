@@ -67,6 +67,7 @@ class PlayerBehaviourConfig(MonopolyConfig):
     three_way_trade = True  # willing to trade property three-way
     build_randomly = False
     advanced_jail_strat = False
+    random = False
 
 class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
     # players behaviour settings based on our self evaluated methods
@@ -83,6 +84,7 @@ class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
     three_way_trade = True  # willing to trade property three-way
     build_randomly = False
     advanced_jail_strat = True
+    random = False
 
 class RandomPlayerBehaviourConfig(MonopolyConfig):
     # players behaviour settings, actions will be random
@@ -99,3 +101,4 @@ class RandomPlayerBehaviourConfig(MonopolyConfig):
     three_way_trade = True  # willing to trade property three-way
     build_randomly = False
     advanced_jail_strat = False
+    random = True
