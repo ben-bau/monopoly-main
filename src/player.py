@@ -4,7 +4,7 @@ from .util.common import *
 import progressbar
 import random
 from .board import Board
-from .expectiminimax import GetActions, powerset
+from .expectiminimax import GetActions, powerset, ExpectiMiniMaxSearch
 from statistics import mean
 from src.util import *
 from copy import deepcopy
@@ -209,6 +209,34 @@ class Player:
         # Return key(actions) that resulted in most wins
         return max_action
 
+    def takeAction(self, board):
+        if self.is_bankrupt:
+            return
+        if (self.behaviour.random and random.randint(0, 1)) or "hasMortgage" in self.action_list or self.behaviour.rule_based:
+            while self.repay_mortgage(board):
+                    board.recalculateAfterPropertyChange()
+
+        # build houses while you have spare cash
+        if (self.behaviour.random and random.randint(0, 1)) or "improveProperty" in self.action_list or self.behaviour.rule_based:
+            while board.improveProperty(self, board, self.money - self.cash_limit):
+                pass
+        
+
+        # Calculate property player wants to get and ready to give away
+        if self.behaviour.refuse_to_trade:
+                pass  # Experiement: do not trade
+        elif (not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1))) or self.behaviour.rule_based):
+            #  Make a trade
+            if (
+                not self.two_way_trade(board)
+                and self.sim_conf.n_players >= 3
+                and self.behaviour.three_way_trade
+            ):
+                self.three_way_trade(board)
+        if ("2waytrade" in self.action_list):
+            self.two_way_trade(board)
+        if ("3waytrade" in self.action_list):
+            self.three_way_trade(board)
     # make a move procedure
     def static_make_a_move(self, board, dieval):
         goAgain = False
@@ -224,10 +252,6 @@ class Player:
             return
 
         # to track the popular cells to land
-        if self.sim_conf.write_mode == WriteMode.CELL_HEATMAP:
-            self.log.write(str(self.position), data=True)
-
-        self.log.write("Player " + self.name + " goes:", 2)
 
         # non-board actions: Trade, unmortgage, build
         # repay mortgage if you have X times more cash than mortgage cost
@@ -388,20 +412,6 @@ class Player:
                 self.name + " gets salary: $" + str(board.game_conf.salary), 3
             )
 
-        self.log.write(
-            self.name
-            + " moves to cell "
-            + str(self.position)
-            + ": "
-            + board.b[self.position].name
-            + (
-                " (" + board.b[self.position].owner.name + ")"
-                if type(board.b[self.position]) == Property
-                and board.b[self.position].owner != ""
-                else ""
-            ),
-            3,
-        )
 
         # perform action of the cell player ended on
         board.action(self, self.position)
@@ -429,6 +439,10 @@ class Player:
             # Update actions with best actions found from MCTS
             self.action_list = self.MCTS_run_sim(board)
             self.mcts_count += 1
+        
+        if self.behaviour.expectiminimax:
+            val, actions = ExpectiMiniMaxSearch(None,0,board,self)
+            self.action_list = actions
 
         # to track the popular cells to land
         if self.sim_conf.write_mode == WriteMode.CELL_HEATMAP and self.write_log:

@@ -36,8 +36,9 @@ def one_game(run_number):
     rulebased_player_behaviours = RuleBasedPlayerBehaviourConfig(0)
     random_player_behaviours = RandomPlayerBehaviourConfig(0)
     mcts_player_behaviours = MCTSPlayerBehaviourConfig(0)
+    expectiminimax_player_behaviors = ExpectMiniMaxConfig(0)
     # Create 4 players with set behaviors
-    player_behaviors = [mcts_player_behaviours, random_player_behaviours, random_player_behaviours, random_player_behaviours]
+    player_behaviors = [expectiminimax_player_behaviors, random_player_behaviours, random_player_behaviours, random_player_behaviours]
 
 
     # create players
