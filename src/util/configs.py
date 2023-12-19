@@ -70,6 +70,8 @@ class PlayerBehaviourConfig(MonopolyConfig):
     build_randomly = False
     advanced_jail_strat = False
     random = False
+    expectiminimax = False
+    rule_based = False
     mcts = False
 
 class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
@@ -88,6 +90,8 @@ class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
     build_randomly = False
     advanced_jail_strat = True
     random = False
+    expectiminimax = False
+    rule_based = True
     mcts = False
 
 class RandomPlayerBehaviourConfig(MonopolyConfig):
@@ -106,10 +110,12 @@ class RandomPlayerBehaviourConfig(MonopolyConfig):
     build_randomly = False
     advanced_jail_strat = False
     random = True
+    expectiminimax = False
+    rule_based = False
     mcts = False
-
-class MCTSPlayerBehaviourConfig(MonopolyConfig):
-    # players behaviour settings, actions will be random
+    
+class ExpectMiniMaxConfig(MonopolyConfig):
+    # players behaviour settings
     def __init__(self, id):
         self.id = id
 
@@ -123,5 +129,26 @@ class MCTSPlayerBehaviourConfig(MonopolyConfig):
     three_way_trade = True  # willing to trade property three-way
     build_randomly = False
     advanced_jail_strat = False
-    random = True
+    random = False
+    expectiminimax = True
+    rule_based = False
+    mcts = False
+
+class MCTSPlayerBehaviourConfig(MonopolyConfig):
+    def __init__(self, id):
+        self.id = id
+
+    build_expensive = False
+    build_cheapest = False
+    refuse_property = ""  # refuse to buy this group
+    build_only_three_houses = False
+    unspendable_cash = 0  # unspendable money
+    unmortgage_coeff = 3  # repay mortgage if you have times this cash
+    refuse_to_trade = False  # willing to trade property
+    three_way_trade = True  # willing to trade property three-way
+    build_randomly = False
+    advanced_jail_strat = False
+    random = False
+    expectiminimax = False
+    rule_based = False
     mcts = True

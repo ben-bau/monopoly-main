@@ -3,6 +3,7 @@ from .util.configs import *
 from .util.common import *
 import progressbar
 import random
+from .board import Board
 from statistics import mean
 from src.util import *
 from copy import deepcopy
@@ -34,6 +35,7 @@ class Player:
         self.behaviour = behaviour
         self.sim_conf = simulation_conf
         self.turns = 0 # for advanced jail strat
+        self.action_list = []
         self.mcts_sim = False # for MCTS simulations, determine if current play is MCTS sim or real game
         self.mcts_count = 0 # Keep track of number of MCTS sims done
 
@@ -89,7 +91,11 @@ class Player:
             # Subtract scaled utility of every other player 
             else:
                 self_utility -= (player_utilities[player] / 10)
-        return self_utility
+        return self_utility        
+    
+    def OtherPlayerSearch(self,depth, board, count):
+        if count == len(board.players):
+            return ExpectiMiniMaxSearch
 
     # simulate one game from already in-progress point of a game, for MCTS
     def MCTS_one_game(self, run_number, board):    
@@ -160,11 +166,212 @@ class Player:
 
         # Leaving MCTS simulation
         self.mcts_sim = False
-
         return results
 
-
     # make a move procedure
+    def static_make_a_move(self, board,dieval):
+        goAgain = False
+        justLeftJail = False
+        if dieval == 2:
+            die1 = 0
+            die2  =2
+        else:
+            die1 = dieval-1
+            die2  = 1
+        # Only proceed if player is alive (not bankrupt)
+        if self.is_bankrupt:
+            return
+
+        # to track the popular cells to land
+        if self.sim_conf.write_mode == WriteMode.CELL_HEATMAP:
+            self.log.write(str(self.position), data=True)
+
+        self.log.write("Player " + self.name + " goes:", 2)
+
+        # non-board actions: Trade, unmortgage, build
+        # repay mortgage if you have X times more cash than mortgage cost
+        if (self.behaviour.random and random.randint(0, 1)) or "hasMortgage" in self.action_list or self.behaviour.rule_based:
+            while self.repay_mortgage(board):
+                    board.recalculateAfterPropertyChange()
+
+        # build houses while you have spare cash
+        if (self.behaviour.random and random.randint(0, 1)) or "improveProperty" in self.action_list or self.behaviour.rule_based:
+            while board.improveProperty(self, board, self.money - self.cash_limit):
+                pass
+        
+
+        # Calculate property player wants to get and ready to give away
+        if self.behaviour.refuse_to_trade:
+                pass  # Experiement: do not trade
+        elif (not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1))) or self.behaviour.rule_based):
+            #  Make a trade
+            if (
+                not self.two_way_trade(board)
+                and self.sim_conf.n_players >= 3
+                and self.behaviour.three_way_trade
+            ):
+                self.three_way_trade(board)
+        if ("2waytrade" in self.action_list):
+            self.two_way_trade(board)
+        if ("3waytrade" in self.action_list):
+            self.three_way_trade(board)
+        # roll dice
+        
+        self.add_turn()
+
+        # Jail situation:
+        # Stay unless you roll doubles, unless advanced behavior
+        if self.in_jail:
+            # If early on in game, get out ASAP if you have enough to buy properties after
+            if self.behaviour.advanced_jail_strat and self.turns <= 20:
+                # Try using GOOJF cards first
+                if self.has_jail_card_chance:
+                    self.has_jail_card_chance = False
+                    board.chanceCards.append(1)  # return the card
+                    self.log.write(
+                        self.name + " uses the Chance GOOJF card to get out of jail", 3
+                    )
+                elif self.has_jail_card_community:
+                    self.has_jail_card_community = False
+                    board.communityCards.append(6)  # return the card
+                    self.log.write(
+                    self.name + " uses the Community GOOJF card to get out of jail", 3
+                    )
+                # Else if you have enough to buy a property outside of it, pay fine
+                elif self.money >= (140 + board.game_conf.jail_fine):
+                    self.take_money(
+                        board.game_conf.jail_fine, board, BANK_NAME
+                    )  # get out on fine
+                    self.days_in_jail = 0
+                    self.log.write(self.name + " pays fine and gets out of jail", 3)
+                # If no other methods work, doubles needed
+                elif dice1 != dice2:
+                    self.days_in_jail += 1
+                    if self.days_in_jail < 3:
+                        self.log.write(self.name + " spends this turn in jail", 3)
+                        return False  # skip turn in jail
+                    else:
+                        self.take_money(
+                            board.game_conf.jail_fine, board, BANK_NAME
+                        )  # get out on fine
+                        self.days_in_jail = 0
+                        self.log.write(self.name + " pays fine and gets out of jail", 3)
+                else:  # get out of jail on doubles
+                    self.log.write(self.name + " rolls double and gets out of jail", 3)
+                    self.days_in_jail = 0
+                    goAgain = False
+                    justLeftJail = True
+            # If late game, stay in jail as long as possible by just rolling(not using GOOJF card)
+            elif self.behaviour.advanced_jail_strat and self.turns >= 40:
+                if dice1 != dice2:
+                    self.days_in_jail += 1
+                    if self.days_in_jail < 3:
+                        self.log.write(self.name + " spends this turn in jail", 3)
+                        return False  # skip turn in jail
+                    else:
+                        self.take_money(
+                            board.game_conf.jail_fine, board, BANK_NAME
+                        )  # get out on fine
+                        self.days_in_jail = 0
+                        self.log.write(self.name + " pays fine and gets out of jail", 3)
+                else:  # get out of jail on doubles
+                    self.log.write(self.name + " rolls double and gets out of jail", 3)
+                    self.days_in_jail = 0
+                    goAgain = False
+                    justLeftJail = True
+            # If not advanced strat or midgame, stay in jail unless GOOJF card
+            else:
+                if self.has_jail_card_chance and ((self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random):
+                    self.has_jail_card_chance = False
+                    board.chanceCards.append(1)  # return the card
+                    self.log.write(
+                        self.name + " uses the Chance GOOJF card to get out of jail", 3
+                    )
+                elif self.has_jail_card_community and ((self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random):
+                    self.has_jail_card_community = False
+                    board.communityCards.append(6)  # return the card
+                    self.log.write(
+                        self.name + " uses the Community GOOJF card to get out of jail", 3
+                    )
+                # If random behavior, random chance to pay fine
+                elif self.behaviour.random and random.randint(0, 1):
+                    self.take_money(
+                        board.game_conf.jail_fine, board, BANK_NAME
+                    )  # get out on fine
+                    self.days_in_jail = 0
+                    self.log.write(self.name + " pays fine and gets out of jail", 3)
+                elif dice1 != dice2:
+                    self.days_in_jail += 1
+                    if self.days_in_jail < 3:
+                        self.log.write(self.name + " spends this turn in jail", 3)
+                        return False  # skip turn in jail
+                    else:
+                        self.take_money(
+                            board.game_conf.jail_fine, board, BANK_NAME
+                        )  # get out on fine
+                        self.days_in_jail = 0
+                        self.log.write(self.name + " pays fine and gets out of jail", 3)
+                else:  # get out of jail on doubles
+                    self.log.write(self.name + " rolls double and gets out of jail", 3)
+                    self.days_in_jail = 0
+                    goAgain = False
+                    justLeftJail = True
+            self.in_jail = False
+
+        # doubles, don't count if rolled in jail
+        if dice1 == dice2 and not self.in_jail and not justLeftJail:
+            goAgain = True  # go again if doubles
+            self.consequent_doubles += 1
+            self.log.write(
+                "it's a number " + str(self.consequent_doubles) + " double in a row", 3
+            )
+            if self.consequent_doubles == 3:  # but go to jail if 3 times in a row
+                self.in_jail = True
+                self.log.write(self.name + " goes to jail on consequtive doubles", 3)
+                self.move_to(10)
+                self.consequent_doubles = 0
+                return False
+        else:
+            self.consequent_doubles = 0  # reset doubles counter
+
+        # move the piece
+        self.position += dice1 + dice2
+
+        # correction of the position if landed on GO or overshoot GO
+        if self.position >= 40:
+            # calculate correct cell
+            self.position = self.position - 40
+            # get salary for passing GO
+            self.add_money(board.game_conf.salary)
+            self.log.write(
+                self.name + " gets salary: $" + str(board.game_conf.salary), 3
+            )
+
+        self.log.write(
+            self.name
+            + " moves to cell "
+            + str(self.position)
+            + ": "
+            + board.b[self.position].name
+            + (
+                " (" + board.b[self.position].owner.name + ")"
+                if type(board.b[self.position]) == Property
+                and board.b[self.position].owner != ""
+                else ""
+            ),
+            3,
+        )
+
+        # perform action of the cell player ended on
+        board.action(self, self.position)
+
+        if goAgain:
+            self.log.write(self.name + " will go again now", 3)
+            return True  # make a move again
+        return False  # no extra move
+
+        if self.action_list:
+            self.action_list.clear()
     def make_a_move(self, board):
         # If MCTS player and not bankrupt, run simulations
         if self.behaviour.mcts and not self.mcts_sim and not self.is_bankrupt:
@@ -188,12 +395,12 @@ class Player:
 
         # non-board actions: Trade, unmortgage, build
         # repay mortgage if you have X times more cash than mortgage cost
-        if (self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random:
+        if (self.behaviour.random and random.randint(0, 1)) or "hasMortgage" in self.action_list or self.behaviour.rule_based:
             while self.repay_mortgage(board):
                 board.recalculateAfterPropertyChange()
 
         # build houses while you have spare cash
-        if (self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random:
+        if (self.behaviour.random and random.randint(0, 1)) or "improveProperty" in self.action_list or self.behaviour.rule_based:
             while board.improveProperty(self, board, self.money - self.cash_limit):
                 pass
         
@@ -201,7 +408,7 @@ class Player:
         # Calculate property player wants to get and ready to give away
         if self.behaviour.refuse_to_trade:
                 pass  # Experiement: do not trade
-        elif not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1)) or not self.behaviour.random):
+        elif (not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1))) or self.behaviour.rule_based):
             #  Make a trade
             if (
                 not self.two_way_trade(board)
@@ -209,7 +416,10 @@ class Player:
                 and self.behaviour.three_way_trade
             ):
                 self.three_way_trade(board)
-
+        if ("2waytrade" in self.action_list):
+            self.two_way_trade(board)
+        if ("3waytrade" in self.action_list):
+            self.three_way_trade(board)
         # roll dice
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
@@ -399,6 +609,8 @@ class Player:
             return True  # make a move again
         return False  # no extra move
 
+        if self.action_list:
+            self.action_list.clear()
     # get the cheapest mortgage property (name, price)
 
     def cheapest_mortgage(self):
@@ -546,7 +758,34 @@ class Player:
                 return True
             else:
                 return False
+    def look_for_two_way_trade(self,board):
+        trade_happened = False
+        for IWant in self.plots_wanted[::-1]:
+            ownerOfWanted = board.b[IWant].owner
+            if ownerOfWanted == "":
+                continue
+            # Find a match betwee what I want / they want / I have / they have
+            for TheyWant in ownerOfWanted.plots_wanted[::-1]:
+                if (
+                    TheyWant in self.plots_offered
+                    and board.b[IWant].group != board.b[TheyWant].group
+                ):  # prevent exchanging in groups of 2
+                    # Compensate that one plot is cheaper than another one
+                    if board.b[IWant].cost_base < board.b[TheyWant].cost_base:
+                        cheaperOne, expensiveOne = IWant, TheyWant
+                    else:
+                        cheaperOne, expensiveOne = TheyWant, IWant
+                    priceDiff = (
+                        board.b[expensiveOne].cost_base - board.b[cheaperOne].cost_base
+                    )
+                    if (
+                        board.b[cheaperOne].owner.money - priceDiff
+                        >= board.b[cheaperOne].owner.cash_limit
+                    ):
+                        trade_happened = True
 
+                        
+        return trade_happened
     # Look for and perform a two-way trade
     def two_way_trade(self, board):
         trade_happened = False
@@ -606,6 +845,41 @@ class Player:
                         board.recalculateAfterPropertyChange()
         return trade_happened
 
+    def look_for_three_way_trade(self, board):
+        """Look for and perform a three-way trade"""
+        trade_happened = False
+        for wanted1 in self.plots_wanted[::-1]:
+            first_owner_of_wanted = board.b[wanted1].owner
+            if first_owner_of_wanted == "":
+                continue
+            for wanted2 in first_owner_of_wanted.plots_wanted[::-1]:
+                second_owner_of_wanted = board.b[wanted2].owner
+                if second_owner_of_wanted == "":
+                    continue
+                for wanted3 in second_owner_of_wanted.plots_wanted[::-1]:
+                    if wanted3 in self.plots_offered:
+                        # check we have property from 3 groups
+                        # otherwise someone can give and take brown or indigo at the same time
+                        check_diff_group = set()
+                        check_diff_group.add(board.b[wanted1].group)
+                        check_diff_group.add(board.b[wanted2].group)
+                        check_diff_group.add(board.b[wanted3].group)
+                        if len(check_diff_group) < 3:
+                            continue
+
+                        topay1 = board.b[wanted1].cost_base - board.b[wanted3].cost_base
+                        topay2 = board.b[wanted2].cost_base - board.b[wanted1].cost_base
+                        topay3 = board.b[wanted3].cost_base - board.b[wanted2].cost_base
+                        if (
+                            self.money - topay1 > self.cash_limit
+                            and first_owner_of_wanted.money - topay2
+                            > first_owner_of_wanted.cash_limit
+                            and first_owner_of_wanted.money - topay3
+                            > second_owner_of_wanted.cash_limit
+                        ):
+                            tradeHappened = True
+                            
+        return trade_happened
     def three_way_trade(self, board):
         """Look for and perform a three-way trade"""
         trade_happened = False
