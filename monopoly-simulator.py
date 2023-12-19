@@ -22,7 +22,10 @@ from src import Board, Player
 
 
 sim_conf = SimulationConfig()
-log = Log()
+if sim_conf.write_log:
+    log = Log()
+else:
+    log = False
 
 # simulate one game
 def one_game(run_number):
@@ -32,8 +35,9 @@ def one_game(run_number):
     normal_player_behaviours = PlayerBehaviourConfig(0)
     rulebased_player_behaviours = RuleBasedPlayerBehaviourConfig(0)
     random_player_behaviours = RandomPlayerBehaviourConfig(0)
+    mcts_player_behaviours = MCTSPlayerBehaviourConfig(0)
     # Create 4 players with set behaviors
-    player_behaviors = [random_player_behaviours, normal_player_behaviours, normal_player_behaviours, normal_player_behaviours]
+    player_behaviors = [mcts_player_behaviours, normal_player_behaviours, normal_player_behaviours, normal_player_behaviours]
 
 
     # create players
@@ -51,10 +55,10 @@ def one_game(run_number):
         else:
             starting_money = game_rules.starting_money_per_player[i]
 
-        players.append(Player(names[i], starting_money, player_behaviors[i], sim_conf, log))
+        players.append(Player(names[i], starting_money, player_behaviors[i], sim_conf, sim_conf.write_log, log))
             
     # create board
-    game_board = Board(players, game_rules, log)
+    game_board = Board(players, game_rules, sim_conf.write_log, log)
 
     #  net_worth history first point
     if sim_conf.write_mode == WriteMode.NET_WORTH:
@@ -63,7 +67,8 @@ def one_game(run_number):
             net_worth_string += str(player.net_worth(game_board))
             if player != players[-1]:
                 net_worth_string += "\t"
-        log.write(net_worth_string, data=True)
+        if sim_conf.write_log:
+            log.write(net_worth_string, data=True)
 
     last_turn = None
     # game
@@ -72,15 +77,17 @@ def one_game(run_number):
         last_turn = i - 1
 
         if is_game_over(players):
-            if sim_conf.write_mode == WriteMode.GAME_LENGTH:
-                log.write(str(last_turn), data=True)
-            
+            if sim_conf.write_log:
+                if sim_conf.write_mode == WriteMode.GAME_LENGTH:
+                    log.write(str(last_turn), data=True)
             break
-
-        log.write("TURN "+str(i+1), 1)
+        
+        if sim_conf.write_log:
+            log.write("TURN "+str(i+1), 1)
         for player in players:
             if player.money > 0:
-                log.write(f"{f'{player.name}: ':8} ${player.money} | position:"+str(player.position), 2)
+                if sim_conf.write_log:
+                    log.write(f"{f'{player.name}: ':8} ${player.money} | position:"+str(player.position), 2)
 
         for player in players:
             if not is_game_over(players):  # Only continue if 2 or more players
@@ -95,8 +102,8 @@ def one_game(run_number):
                 net_worth_string += str(player.net_worth(game_board))
                 if player != players[-1]:
                     net_worth_string += "\t"
-                
-            log.write(net_worth_string, data=True)
+            if sim_conf.write_log:
+                log.write(net_worth_string, data=True)
 
     # tests
     # for player in players:
@@ -106,18 +113,24 @@ def one_game(run_number):
     results = [players[i].get_money() for i in range(sim_conf.n_players)]
 
     # if it is an only simulation, print map and final score
-    if sim_conf.n_simulations == 1 and sim_conf.show_map:
-        game_board.printMap()
+    # if sim_conf.n_simulations == 1 and sim_conf.show_map:
+    #     game_board.printMap()
 
-    if sim_conf.n_simulations == 1 and sim_conf.show_result:
-        print(results)
-    return results, last_turn, log.get_data()
+    # if sim_conf.n_simulations == 1 and sim_conf.show_result:
+    #     print(results)
+    if sim_conf.write_log:
+        return results, last_turn, log.get_data()
+    else:
+        return results, last_turn
 
 
 def run_simulation(parallel=False):
     """run multiple game simulations"""
     results = []
-    local_log = Log()
+    if sim_conf.write_log:
+        local_log = Log()
+    else:
+        local_log = False
 
     with Pool(processes=sim_conf.num_threads) as pool:
 
@@ -139,7 +152,7 @@ def run_simulation(parallel=False):
                 results.append(game_result)
 
                 # determine winner, and calculate average game length
-                ending_net_worth, last_turn, _ = game_result
+                ending_net_worth, last_turn = game_result
                 if (last_turn != sim_conf.n_simulations - 2):
                     game_lengths.append(last_turn)
                 
@@ -152,18 +165,17 @@ def run_simulation(parallel=False):
                 # write remaining players in a data log
                 if sim_conf.write_mode == WriteMode.REMAINING_PLAYERS:
                     rem_players = sum([1 for r in result[-1] if r > 0])
-                    local_log.write(str(rem_players), data=True)
+                    if sim_conf.write_log:
+                        local_log.write(str(rem_players), data=True)
         else:
             for i in pbwrapper(range(sim_conf.n_simulations), sim_conf.n_simulations):
-            
-                local_log.write("=" * 10 + " GAME " + str(i+1) + " " + "=" * 10 + "\n")
-            
+                    
                 # remaining players - add to the results list
                 game_result = one_game(i)
                 results.append(game_result)
 
                 # determine winner
-                ending_net_worth, last_turn, _ = game_result
+                ending_net_worth, last_turn = game_result
                 if (last_turn != sim_conf.n_simulations - 2):
                     game_lengths.append(last_turn)
                 
@@ -176,7 +188,8 @@ def run_simulation(parallel=False):
                 # write remaining players in a data log
                 if sim_conf.write_mode == WriteMode.REMAINING_PLAYERS:
                     rem_players = sum([1 for r in result[-1] if r > 0])
-                    local_log.write(str(rem_players), data=True)
+                    if sim_conf.write_log:
+                            local_log.write(str(rem_players), data=True)
 
         if sim_conf.show_progress_bar:
             pbar.finish()
@@ -202,15 +215,15 @@ if __name__ == "__main__":
     print("Players:", sim_conf.n_players, " Turns:", sim_conf.n_moves,
           " Games:", sim_conf.n_simulations, " Seed:", sim_conf.seed)
 
-    results_and_metrics = run_simulation(parallel=True)
+    results_and_metrics = run_simulation(parallel=False)
     results = []
     metric_str = ""
-    for result, game_length, metrics in results_and_metrics:
+    for result, game_length in results_and_metrics:
         results.append(result)
-        metric_str += '\t'.join(metrics) + "\n"
+        # metric_str += '\t'.join(metrics) + "\n"
 
-    with open('data.txt', 'w') as f:
-        f.write(metric_str)
+    #with open('data.txt', 'w') as f:
+    #    f.write(metric_str)
 
     # analyze_results(results, sim_conf)
     # analyze_data()

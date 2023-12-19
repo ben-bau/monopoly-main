@@ -59,6 +59,7 @@ class Node:
         self.board = board 
         self.children = []
         self.prev_move = []
+        self.prev_move = []
         self.chance_val =0
     def __init__(self, board,prev_move) -> None:
         self.board = board 
@@ -80,6 +81,8 @@ class Node:
 def ExpectiMiniMaxSearch(node, depth, board,player):
     if IsCutoff(depth, board) or not GetActions(board,player):
         return Eval(player,board)
+    if node == None:
+        node = Node(board)
     for actions in GetActions(board,player):
         player.action_list = actions
         newBoard = copy.deepcopy(board)

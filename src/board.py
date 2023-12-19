@@ -4,7 +4,7 @@ import random
 
 
 class Board:
-    def __init__(self, players, game_conf, log):
+    def __init__(self, players, game_conf, write_log, log):
         """
         Board is a data for plots
 
@@ -22,9 +22,11 @@ class Board:
         self.log = log
         self.game_conf = game_conf
 
+        self.write_log = write_log
+
         self.b = []
         # 0-4
-        self.b.append(Cell("Go", log))
+        self.b.append(Cell("Go", write_log, log))
         self.b.append(
             Property(
                 "A1 Mediterraneal Avenue",
@@ -33,19 +35,20 @@ class Board:
                 50,
                 (10, 30, 90, 160, 250),
                 "brown",
+                write_log,
                 log,
             )
         )
-        self.b.append(Community("Community Chest", log))
+        self.b.append(Community("Community Chest", write_log, log))
         self.b.append(
             Property(
-                "A2 Baltic Avenue", 60, 4, 50, (20, 60, 180, 320, 450), "brown", log
+                "A2 Baltic Avenue", 60, 4, 50, (20, 60, 180, 320, 450), "brown", write_log, log
             )
         )
-        self.b.append(PropertyTax("Property Tax", log))
+        self.b.append(PropertyTax("Property Tax", write_log, log))
         # 5-9
         self.b.append(
-            Property("R1 Reading railroad", 200, 0, 0, (0, 0, 0, 0, 0), "rail", log)
+            Property("R1 Reading railroad", 200, 0, 0, (0, 0, 0, 0, 0), "rail", write_log, log)
         )
         self.b.append(
             Property(
@@ -55,10 +58,11 @@ class Board:
                 50,
                 (30, 90, 270, 400, 550),
                 "lightblue",
+                write_log,
                 log,
             )
         )
-        self.b.append(Chance("Chance", log))
+        self.b.append(Chance("Chance", write_log, log))
         self.b.append(
             Property(
                 "B2 Vermont Avenue",
@@ -67,6 +71,7 @@ class Board:
                 50,
                 (30, 90, 270, 400, 550),
                 "lightblue",
+                write_log,
                 log,
             )
         )
@@ -78,11 +83,12 @@ class Board:
                 50,
                 (40, 100, 300, 450, 600),
                 "lightblue",
+                write_log,
                 log,
             )
         )
         # 10-14
-        self.b.append(Cell("Prison", log))
+        self.b.append(Cell("Prison", write_log, log))
         self.b.append(
             Property(
                 "C1 St.Charle's Place",
@@ -91,15 +97,16 @@ class Board:
                 100,
                 (50, 150, 450, 625, 750),
                 "pink",
+                write_log,
                 log,
             )
         )
         self.b.append(
-            Property("U1 Electric Company", 150, 0, 0, (0, 0, 0, 0, 0), "util", log)
+            Property("U1 Electric Company", 150, 0, 0, (0, 0, 0, 0, 0), "util", write_log, log)
         )
         self.b.append(
             Property(
-                "C2 States Avenue", 140, 10, 100, (50, 150, 450, 625, 750), "pink", log
+                "C2 States Avenue", 140, 10, 100, (50, 150, 450, 625, 750), "pink", write_log, log
             )
         )
         self.b.append(
@@ -110,13 +117,14 @@ class Board:
                 100,
                 (60, 180, 500, 700, 900),
                 "pink",
+                write_log,
                 log,
             )
         )
         # 15-19
         self.b.append(
             Property(
-                "R2 Pennsylvania Railroad", 200, 0, 0, (0, 0, 0, 0, 0), "rail", log
+                "R2 Pennsylvania Railroad", 200, 0, 0, (0, 0, 0, 0, 0), "rail", write_log, log
             )
         )
         self.b.append(
@@ -127,10 +135,11 @@ class Board:
                 100,
                 (70, 200, 550, 700, 950),
                 "orange",
+                write_log,
                 log,
             )
         )
-        self.b.append(Community("Community Chest", log))
+        self.b.append(Community("Community Chest", write_log,  log))
         self.b.append(
             Property(
                 "D2 Tennessee Avenue",
@@ -139,6 +148,7 @@ class Board:
                 100,
                 (70, 200, 550, 700, 950),
                 "orange",
+                write_log,
                 log,
             )
         )
@@ -150,11 +160,12 @@ class Board:
                 100,
                 (80, 220, 600, 800, 1000),
                 "orange",
+                write_log,
                 log,
             )
         )
         # 20-24
-        self.b.append(Cell("Free Parking", log))
+        self.b.append(Cell("Free Parking", write_log, log))
         self.b.append(
             Property(
                 "E1 Kentucky Avenue",
@@ -163,13 +174,14 @@ class Board:
                 150,
                 (90, 250, 700, 875, 1050),
                 "red",
+                write_log,
                 log,
             )
         )
-        self.b.append(Chance("Chance", log))
+        self.b.append(Chance("Chance", write_log, log))
         self.b.append(
             Property(
-                "E2 Indiana Avenue", 220, 18, 150, (90, 250, 700, 875, 1050), "red", log
+                "E2 Indiana Avenue", 220, 18, 150, (90, 250, 700, 875, 1050), "red", write_log, log
             )
         )
         self.b.append(
@@ -180,12 +192,13 @@ class Board:
                 150,
                 (100, 300, 750, 925, 1100),
                 "red",
+                write_log,
                 log,
             )
         )
         # 25-29
         self.b.append(
-            Property("R3 BnO Railroad", 200, 0, 0, (0, 0, 0, 0, 0), "rail", log)
+            Property("R3 BnO Railroad", 200, 0, 0, (0, 0, 0, 0, 0), "rail", write_log, log)
         )
         self.b.append(
             Property(
@@ -195,6 +208,7 @@ class Board:
                 150,
                 (110, 330, 800, 975, 1150),
                 "yellow",
+                write_log,
                 log,
             )
         )
@@ -206,11 +220,12 @@ class Board:
                 150,
                 (110, 330, 800, 975, 1150),
                 "yellow",
+                write_log,
                 log,
             )
         )
         self.b.append(
-            Property("U2 Waterworks", 150, 0, 0, (0, 0, 0, 0, 0), "util", log)
+            Property("U2 Waterworks", 150, 0, 0, (0, 0, 0, 0, 0), "util", write_log, log)
         )
         self.b.append(
             Property(
@@ -220,11 +235,12 @@ class Board:
                 150,
                 (120, 360, 850, 1025, 1200),
                 "yellow",
+                write_log,
                 log,
             )
         )
         # 30-34
-        self.b.append(GoToJail("Go To Jail", log))
+        self.b.append(GoToJail("Go To Jail", write_log, log))
         self.b.append(
             Property(
                 "G1 Pacific Avenue",
@@ -233,6 +249,7 @@ class Board:
                 200,
                 (130, 390, 900, 1100, 1275),
                 "green",
+                write_log,
                 log,
             )
         )
@@ -244,10 +261,11 @@ class Board:
                 200,
                 (130, 390, 900, 1100, 1275),
                 "green",
+                write_log,
                 log,
             )
         )
-        self.b.append(Community("Community Chest", log))
+        self.b.append(Community("Community Chest", write_log, log))
         self.b.append(
             Property(
                 "G3 Pennsylvania Avenue",
@@ -256,14 +274,15 @@ class Board:
                 200,
                 (150, 450, 100, 1200, 1400),
                 "green",
+                write_log,
                 log,
             )
         )
         # 35-39
         self.b.append(
-            Property("R4 Short Line", 200, 0, 0, (0, 0, 0, 0, 0), "rail", log)
+            Property("R4 Short Line", 200, 0, 0, (0, 0, 0, 0, 0), "rail", write_log, log)
         )
-        self.b.append(Chance("Chance", log))
+        self.b.append(Chance("Chance", write_log, log))
         self.b.append(
             Property(
                 "H1 Park Place",
@@ -272,10 +291,11 @@ class Board:
                 200,
                 (175, 500, 1100, 1300, 1500),
                 "indigo",
+                write_log,
                 log,
             )
         )
-        self.b.append(LuxuryTax("Luxury Tax", log))
+        self.b.append(LuxuryTax("Luxury Tax", write_log, log))
         self.b.append(
             Property(
                 "H2 Boardwalk",
@@ -284,6 +304,7 @@ class Board:
                 200,
                 (200, 600, 1400, 1700, 2000),
                 "indigo",
+                write_log,
                 log,
             )
         )
@@ -494,11 +515,13 @@ class Board:
         thisIsHotel = True if self.b[propertyToImprove].hasHouses == 4 else False
         if thisIsHotel:
             if self.nHotels == board.game_conf.hotel_limit:
-                self.log.write("reached hotel limit", 3)
+                if self.write_log:
+                    self.log.write("reached hotel limit", 3)
                 return False
         else:
             if self.nHouses == board.game_conf.house_limit:
-                self.log.write("reached house limit", 3)
+                if self.write_log:
+                    self.log.write("reached house limit", 3)
                 return False
 
         # add a building
@@ -510,14 +533,15 @@ class Board:
         else:
             self.nHouses += 1
 
-        self.log.write(
-            player.name
-            + " builds house N"
-            + str(self.b[propertyToImprove].hasHouses)
-            + " on "
-            + self.b[propertyToImprove].name,
-            3,
-        )
+        if self.write_log:
+            self.log.write(
+                player.name
+                + " builds house N"
+                + str(self.b[propertyToImprove].hasHouses)
+                + " on "
+                + self.b[propertyToImprove].name,
+                3,
+            )
         player.take_money(self.b[propertyToImprove].cost_house, self, BANK_NAME)
         player.plots_to_build = self.listPropertyToBuild(player, board)
         return True
@@ -642,17 +666,17 @@ class Board:
             # calculate the rent one would have to pay (but not pay it yet)
             rent = self.calculateRent(position, special=special)
             # pass action to to the cell
-            self.b[position].action(player, rent, self)
+            self.b[position].action(player, rent, self, write_log=self.write_log)
         # landed on a chance, pass board, to track the chance cards
         elif (
             type(self.b[position]) == Chance
             or type(self.b[position]) == Community
             or type(self.b[position]) == PropertyTax
         ):
-            self.b[position].action(player, self)
+            self.b[position].action(player, self, write_log=self.write_log)
         # other cells
         else:
-            self.b[position].action(player, self)
+            self.b[position].action(player, self, write_log=self.write_log)
 
     def printMap(self):
         for i in range(len(self.b)):
