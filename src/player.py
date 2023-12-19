@@ -83,62 +83,84 @@ class Player:
             else:
                 self_utility -= (player_utilities[player] / 10)
         return self_utility        
-    
-    def OtherPlayerSearch(self,depth, board, count):
-        if count == len(board.players):
-            return ExpectiMiniMaxSearch
+
              
 
 
 
-            
+    def takeAction(self, board):
+        if self.is_bankrupt:
+            return
+
+        # to track the popular cells to land
+
+
+        # non-board actions: Trade, unmortgage, build
+        # repay mortgage if you have X times more cash than mortgage cost
+        if "hasMortgage" in self.action_list:
+            while self.repay_mortgage(board):
+                    board.recalculateAfterPropertyChange()
+
+        # build houses while you have spare cash
+        if "improveProperty" in self.action_list:
+            while board.improveProperty(self, board, self.money - self.cash_limit):
+                pass
+        
+
+
+
+        if ("2waytrade" in self.action_list):
+            self.two_way_trade(board)
+        if ("3waytrade" in self.action_list):
+            self.three_way_trade(board)
+
+
+        # Jail situation:
+        # Stay unless you roll doubles, unless advanced behavior
+        if self.in_jail:
+            # If early on in game, get out ASAP if you have enough to buy properties after
+            if self.behaviour.advanced_jail_strat and self.turns <= 20:
+                # Try using GOOJF cards first
+                if self.has_jail_card_chance:
+                    self.has_jail_card_chance = False
+                    board.chanceCards.append(1)  # return the card
+                    self.in_jail = False
+                elif self.has_jail_card_community:
+                    self.has_jail_card_community = False
+                    board.communityCards.append(6)  # return the card
+                    self.in_jail = False
+                # Else if you have enough to buy a property outside of it, pay fine
+                elif self.money >= (140 + board.game_conf.jail_fine):
+                    self.take_money(
+                        board.game_conf.jail_fine, board, BANK_NAME
+                    )  # get out on fine
+                    self.days_in_jail = 0
+            # If late game, stay in jail as long as possible by just rolling(not using GOOJF card)
+                    self.in_jail = False
+
+        # doubles, don't count if rolled in jail
+        # move the piece
+
+        # correction of the position if landed on GO or overshoot GO
+   
     # make a move procedure
     def static_make_a_move(self, board,dieval):
         goAgain = False
         justLeftJail = False
         if dieval == 2:
-            die1 = 0
-            die2  =2
+            dice1 = 0
+            dice2  =2
         else:
-            die1 = dieval-1
-            die2  = 1
+            dice1 = dieval-1
+            dice2  = 1
         # Only proceed if player is alive (not bankrupt)
         if self.is_bankrupt:
             return
 
         # to track the popular cells to land
-        if self.sim_conf.write_mode == WriteMode.CELL_HEATMAP:
-            self.log.write(str(self.position), data=True)
-
-        self.log.write("Player " + self.name + " goes:", 2)
 
         # non-board actions: Trade, unmortgage, build
         # repay mortgage if you have X times more cash than mortgage cost
-        if (self.behaviour.random and random.randint(0, 1)) or "hasMortgage" in self.action_list or self.behaviour.rule_based:
-            while self.repay_mortgage(board):
-                    board.recalculateAfterPropertyChange()
-
-        # build houses while you have spare cash
-        if (self.behaviour.random and random.randint(0, 1)) or "improveProperty" in self.action_list or self.behaviour.rule_based:
-            while board.improveProperty(self, board, self.money - self.cash_limit):
-                pass
-        
-
-        # Calculate property player wants to get and ready to give away
-        if self.behaviour.refuse_to_trade:
-                pass  # Experiement: do not trade
-        elif (not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1))) or self.behaviour.rule_based):
-            #  Make a trade
-            if (
-                not self.two_way_trade(board)
-                and self.sim_conf.n_players >= 3
-                and self.behaviour.three_way_trade
-            ):
-                self.three_way_trade(board)
-        if ("2waytrade" in self.action_list):
-            self.two_way_trade(board)
-        if ("3waytrade" in self.action_list):
-            self.three_way_trade(board)
         # roll dice
         
         self.add_turn()
@@ -243,21 +265,6 @@ class Player:
             self.in_jail = False
 
         # doubles, don't count if rolled in jail
-        if dice1 == dice2 and not self.in_jail and not justLeftJail:
-            goAgain = True  # go again if doubles
-            self.consequent_doubles += 1
-            self.log.write(
-                "it's a number " + str(self.consequent_doubles) + " double in a row", 3
-            )
-            if self.consequent_doubles == 3:  # but go to jail if 3 times in a row
-                self.in_jail = True
-                self.log.write(self.name + " goes to jail on consequtive doubles", 3)
-                self.move_to(10)
-                self.consequent_doubles = 0
-                return False
-        else:
-            self.consequent_doubles = 0  # reset doubles counter
-
         # move the piece
         self.position += dice1 + dice2
 
@@ -271,31 +278,14 @@ class Player:
                 self.name + " gets salary: $" + str(board.game_conf.salary), 3
             )
 
-        self.log.write(
-            self.name
-            + " moves to cell "
-            + str(self.position)
-            + ": "
-            + board.b[self.position].name
-            + (
-                " (" + board.b[self.position].owner.name + ")"
-                if type(board.b[self.position]) == Property
-                and board.b[self.position].owner != ""
-                else ""
-            ),
-            3,
-        )
-
         # perform action of the cell player ended on
         board.action(self, self.position)
-
+        if self.action_list:
+            self.action_list.clear()
         if goAgain:
-            self.log.write(self.name + " will go again now", 3)
             return True  # make a move again
         return False  # no extra move
 
-        if self.action_list:
-            self.action_list.clear()
     def make_a_move(self, board):
         goAgain = False
         justLeftJail = False
