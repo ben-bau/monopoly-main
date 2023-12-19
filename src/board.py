@@ -671,3 +671,6 @@ class Board:
             else:
                 pass
                 # print (i, type(self.b[i]))
+    
+    
+        
