@@ -25,7 +25,7 @@ def Eval(player, board):
     return self_utility 
 
 def IsCutoff(depth, board):
-    if depth > 5:
+    if depth > 7:
         return True
     if is_game_over(board.players):
         return True
@@ -73,14 +73,20 @@ class Node:
         self.board = board 
         self.children = []
         self.prev_move = prev_move
-        self.chance_val =0 
-    def __init__(self, board,chance,prev_move) -> None:
-        self.board = board 
-        self.children = []
-        self.prev_move = prev_move
-        self.chance_val = chance
     def getBoard(self):
         return self.board
+
+class ChanceNode:
+    def __init__(self, board) -> None:
+        self.board = board 
+        self.children = []
+        self.prev_move = []
+        self.chance_val =0
+    def __init__(self, board,chance) -> None:
+        self.board = board 
+        self.children = []
+        self.prev_move = []
+        self.chance_val =chance
     
 
 
@@ -91,28 +97,31 @@ def ExpectiMiniMaxSearch(node, depth, board,player):
         return Eval(player,board)
     if node == None:
         node = Node(board)
-    for actions in GetActions(board,player):
-        player.action_list = actions
-        newBoard = copy.deepcopy(board)
-        for players in newBoard.players:
-            if players.name == player.name:
-                newPlayer = players
-        newPlayer.takeAction(newBoard)
-        node.children.append(Node(newBoard,actions))
-    for child in node.children:
-        chancevals = {2:1/36,3:2/36,4:3/36,5:4/36,6:5/36,7:1/6,8:5/36,9:4/36,10:3/36,11:3/36,12:1/36}
-        for states in range(2,12):
-            newBoard = copy.deepcopy(child.getBoard)
+    if type(node) == Node:
+        val = -100000
+        for actions in GetActions(board,player):
+            player.action_list = actions
+            newBoard = copy.deepcopy(board)
             for players in newBoard.players:
                 if players.name == player.name:
                     newPlayer = players
-            newPlayer.static_make_a_move(newBoard,states)
-            newnode = Node(newBoard,chancevals[states],child.prev_move)
-            child.children.append(chancevals[states]*ExpectiMiniMaxSearch(newnode,depth+1,newBoard,player.getNextPlayer))
+            newPlayer.takeAction(newBoard)
+            newnode = ChanceNode(newBoard)
+            node.children.append(newnode)
+            val1 = max(ExpectiMiniMaxSearch(newnode,depth+1,newBoard,getNextPlayer(newPlayer,newBoard)))
+            if val1 > val:
+                val = val1
+        return val
+    if type(node) == ChanceNode:
+        value = 0
+        chancevals = {2:1/36,3:2/36,4:3/36,5:4/36,6:5/36,7:1/6,8:5/36,9:4/36,10:3/36,11:3/36,12:1/36}
+        for states in range(2,12):
+            newBoard = copy.deepcopy(board)
+            for players in newBoard.players:
+                if players.name == player.name:
+                    
+                    players.static_make_a_move(newBoard,states)
+                    newnode = Node(newBoard)
+                    value += chancevals[states] * ExpectiMiniMaxSearch(newnode,depth +1,newBoard,getNextPlayer(players,newBoard))
             
-    return max(node.children.children)
-    if is_max:
-        child_values = []
-        for child in node.children:
-            child_values.append(ExpectiMiniMaxSearch(child,depth+1,newBoard,getNextPlayer(player),max_player,False))
-        return max(child_values)
+        return value
