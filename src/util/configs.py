@@ -22,9 +22,9 @@ class WriteMode(Enum):
 class SimulationConfig(MonopolyConfig):
     # simulation settings
     n_players = 4
-    n_moves = 120
-    n_simulations = 5 # Total number of games simulated
-    MCTS_simulations = 100 # Number of MCTS simulations does per turn 
+    n_moves = 100
+    n_simulations = 10 # Total number of games simulated
+    MCTS_simulations = 200 # Number of MCTS simulations does per turn 
     seed = None  
     shuffle_players = True
     real_time = False  # Allow step by step execution via space/enter key
@@ -71,7 +71,7 @@ class PlayerBehaviourConfig(MonopolyConfig):
     advanced_jail_strat = False
     random = False
     expectiminimax = False
-    rule_based = False
+    rule_based = True
     mcts = False
 
 class RuleBasedPlayerBehaviourConfig(MonopolyConfig):

@@ -1,4 +1,4 @@
-import itertools
+from itertools import chain, combinations
 from .board import Board
 import copy
 from .player import *
@@ -31,6 +31,24 @@ def IsCutoff(depth, board):
         return True
     return False
 
+def powerset(some_list):
+    """Returns all subsets of size 0 - len(some_list) for some_list"""
+    if len(some_list) == 0:
+        return [[]]
+
+    subsets = []
+    first_element = some_list[0]
+    remaining_list = some_list[1:]
+    # Strategy: get all the subsets of remaining_list. For each
+    # of those subsets, a full subset list will contain both
+    # the original subset as well as a version of the subset
+    # that contains first_element
+    for partial_subset in powerset(remaining_list):
+        subsets.append(partial_subset)
+        subsets.append(partial_subset[:] + [first_element])
+
+    return subsets
+
 def GetActions(board, player):
     actions = []
     if (player.look_for_two_way_trade(board)):
@@ -42,17 +60,7 @@ def GetActions(board, player):
     propertyToImprove = board.choosePropertyToBuild(player, player.money)
     if type(propertyToImprove) != bool:
         actions.append("improveProperty")
-    if(len(actions) > 1):
-        for r in range(2,len(actions)+1):
-            newlist = actions
-            for i in actions:
-                if len(i) == 1:
-                    newlist.append(i)
-            combos = list(itertools.combinations('ABC', r))
-            for j in combos:
-                actions.append(j)
-
-    return actions
+    return powerset(actions)
     
 class Node:
     def __init__(self, board) -> None:

@@ -4,6 +4,7 @@ from .util.common import *
 import progressbar
 import random
 from .board import Board
+from .expectiminimax import GetActions, powerset
 from statistics import mean
 from src.util import *
 from copy import deepcopy
@@ -38,6 +39,7 @@ class Player:
         self.action_list = []
         self.mcts_sim = False # for MCTS simulations, determine if current play is MCTS sim or real game
         self.mcts_count = 0 # Keep track of number of MCTS sims done
+        self.mcts_single_move = False
 
     def __str__(self):
         return (
@@ -91,11 +93,7 @@ class Player:
             # Subtract scaled utility of every other player 
             else:
                 self_utility -= (player_utilities[player] / 10)
-        return self_utility        
-    
-    def OtherPlayerSearch(self,depth, board, count):
-        if count == len(board.players):
-            return ExpectiMiniMaxSearch
+        return self_utility
 
     # simulate one game from already in-progress point of a game, for MCTS
     def MCTS_one_game(self, run_number, board):    
@@ -104,13 +102,30 @@ class Player:
         game_board = deepcopy(board)
         players = game_board.players
 
+        # Get and perform random available action(s) for player
+        # actions_powerset = GetActions(game_board, self)
+        actions_powerset = powerset(["2waytrade", "3waytrade", "hasMortgage", "improveProperty"])
+        action_choice = random.choice(actions_powerset)
+        players[0].action_list = action_choice
+        # Perform the single specified move, then playout game as normal behavior
+        players[0].mcts_single_move = True
+        while players[0].make_a_move(game_board):
+            pass
+        
+        # Since self got an extra turn, give everyone else a turn
+        for player in players[1::]:
+                if not is_game_over(players):  # Only continue if 2 or more players
+                    # returns True if player has to go again
+                    while player.make_a_move(game_board):
+                        pass
+
         last_turn = None
-        # game
-        for i in range(sim_conf.n_moves - players[0].turns): # Subtract number of already played turns
+        # Complete the rest of the game simulation
+        for i in range(self.turns, sim_conf.n_moves): # Subtract number of already played turns
             
             last_turn = i - 1
 
-            if is_game_over(players):
+            if is_game_over(players) or self.is_bankrupt:
                 break
 
             for player in players:
@@ -123,9 +138,12 @@ class Player:
         # for player in players:
         # player.three_way_trade(gameBoard)
 
-        # return final scores
+        # Revert back to MCTS behavior after game playout as normal player
+        player[0].behaviour = MCTSPlayerBehaviourConfig(0)
+
+        # return final scores and action(s) causing that
         results = [players[i].get_money() for i in range(sim_conf.n_players)]
-        return results, last_turn
+        return results, last_turn, action_choice
 
     def MCTS_run_sim(self, board):
         sim_conf = SimulationConfig()
@@ -135,17 +153,22 @@ class Player:
         i = 0
         tracking_winners = [0]*sim_conf.n_players
 
-        timeout = .25 # How long each MCTS sim will run (seconds)
-        timeout_start = time.time()
+        MCTS_tracking = {}
+
+        # timeout = 1 # How long each MCTS sim will run (seconds)
+        # timeout_start = time.time()
         for i in range(sim_conf.MCTS_simulations):
-            if time.time() > timeout_start + timeout:
-                break        
+            # If time runs out
+            # if time.time() > timeout_start + timeout:
+            #     break        
+            
             # remaining players - add to the results list
             game_result = self.MCTS_one_game(i, board)
+            print(f"Game result: {game_result}")
             results.append(game_result)
 
             # determine winner
-            ending_net_worth, last_turn = game_result
+            ending_net_worth, last_turn, actions = game_result
             if (last_turn != sim_conf.MCTS_simulations - 2):
                 game_lengths.append(last_turn)
             
@@ -154,30 +177,48 @@ class Player:
 
             if (winner_result_map[1][1] < 0):
                 tracking_winners[winner_result_map[0][0]] += 1
-        
-        print(f"Winners distribution (A, B, C, D ...) across {len(game_lengths)} games that finished:")
+
+            print(f"Tracking Winners: {tracking_winners}")
+
+            # Add/update actions and result from MCTS simulated game based on win or loss
+            if tuple(actions) in MCTS_tracking:
+                if self.is_bankrupt:
+                    MCTS_tracking[tuple(actions)] -= 1
+                else:
+                    MCTS_tracking[tuple(actions)] += 2
+            else:
+                if self.is_bankrupt:
+                    MCTS_tracking[tuple(actions)] = 1
+                else:
+                    MCTS_tracking[tuple(actions)] = 2
+
+        # Get the action(s) with the best results(most wins)
+        max_action = list(max(MCTS_tracking, key=MCTS_tracking.get))
+
+        print(f"MCTS Winners distribution (A, B, C, D ...) across {len(game_lengths)} games that finished:")
         print(tracking_winners)
 
         if sum(game_lengths) > 0:
             print(f"Average game length: {mean(game_lengths)} (excluding games that did not finish).")
-            print(f"MCTS simulation count: {self.mcts_count}, Turn: {self.turns}")
+            print(f"MCTS simulation count: {self.mcts_count}, MCTS Result: {max_action}: {MCTS_tracking[tuple(max_action)]}")
         else:
             print("No games finished.")
 
         # Leaving MCTS simulation
         self.mcts_sim = False
-        return results
+        # Return key(actions) that resulted in most wins
+        return max_action
 
     # make a move procedure
-    def static_make_a_move(self, board,dieval):
+    def static_make_a_move(self, board, dieval):
         goAgain = False
         justLeftJail = False
         if dieval == 2:
-            die1 = 0
-            die2  =2
+            dice1 = 0
+            dice2 = 2
         else:
-            die1 = dieval-1
-            die2  = 1
+            dice1 = dieval-1
+            dice2  = 1
         # Only proceed if player is alive (not bankrupt)
         if self.is_bankrupt:
             return
@@ -365,26 +406,29 @@ class Player:
         # perform action of the cell player ended on
         board.action(self, self.position)
 
+        if self.action_list:
+            self.action_list.clear()
+
         if goAgain:
             self.log.write(self.name + " will go again now", 3)
             return True  # make a move again
         return False  # no extra move
 
-        if self.action_list:
-            self.action_list.clear()
+        
     def make_a_move(self, board):
-        # If MCTS player and not bankrupt, run simulations
-        if self.behaviour.mcts and not self.mcts_sim and not self.is_bankrupt:
-            self.mcts_sim = True # We are entering MCTS simulation, don't want to recurse
-            self.MCTS_run_sim(board)
-            self.mcts_count += 1
-
         goAgain = False
         justLeftJail = False
 
         # Only proceed if player is alive (not bankrupt)
         if self.is_bankrupt:
             return
+        
+        # If MCTS player, run simulations
+        if self.behaviour.mcts and not self.mcts_sim:
+            self.mcts_sim = True # We are entering MCTS simulation, don't want to recurse
+            # Update actions with best actions found from MCTS
+            self.action_list = self.MCTS_run_sim(board)
+            self.mcts_count += 1
 
         # to track the popular cells to land
         if self.sim_conf.write_mode == WriteMode.CELL_HEATMAP and self.write_log:
@@ -408,18 +452,22 @@ class Player:
         # Calculate property player wants to get and ready to give away
         if self.behaviour.refuse_to_trade:
                 pass  # Experiement: do not trade
-        elif (not self.behaviour.refuse_to_trade and ((self.behaviour.random and random.randint(0, 1))) or self.behaviour.rule_based):
-            #  Make a trade
-            if (
-                not self.two_way_trade(board)
-                and self.sim_conf.n_players >= 3
-                and self.behaviour.three_way_trade
-            ):
-                self.three_way_trade(board)
-        if ("2waytrade" in self.action_list):
-            self.two_way_trade(board)
-        if ("3waytrade" in self.action_list):
-            self.three_way_trade(board)
+        elif (self.behaviour.random and random.randint(0, 1)) or self.behaviour.rule_based or "2waytrade" in self.action_list:
+            #  Make a trade, if not able to do 2 try 3 player
+            if not self.two_way_trade(board):
+                if ( # If expectiminimax behaviour
+                    "3waytrade" in self.action_list
+                    and self.sim_conf.n_players >= 3
+                    and self.behaviour.three_way_trade
+                ):
+                    self.three_way_trade(board)
+                elif ( # If other behavior
+                    not self.behaviour.expectiminimax 
+                    and self.sim_conf.n_players >= 3
+                    and self.behaviour.three_way_trade
+                ):
+                    self.three_way_trade(board)
+
         # roll dice
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
@@ -603,6 +651,13 @@ class Player:
         # perform action of the cell player ended on
         board.action(self, self.position)
 
+        # if this move was the specified MCTS action, revert to normal behavior
+        if self.mcts_single_move:
+            self.mcts_single_move = False
+            self.behaviour = PlayerBehaviourConfig(0)
+            self.action_list = []
+            print("MCTS player switched to normal")
+
         if goAgain:
             if self.write_log:
                 self.log.write(self.name + " will go again now", 3)
@@ -758,6 +813,7 @@ class Player:
                 return True
             else:
                 return False
+    
     def look_for_two_way_trade(self,board):
         trade_happened = False
         for IWant in self.plots_wanted[::-1]:
@@ -783,9 +839,8 @@ class Player:
                         >= board.b[cheaperOne].owner.cash_limit
                     ):
                         trade_happened = True
-
-                        
         return trade_happened
+    
     # Look for and perform a two-way trade
     def two_way_trade(self, board):
         trade_happened = False
