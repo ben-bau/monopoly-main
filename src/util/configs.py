@@ -23,8 +23,9 @@ class SimulationConfig(MonopolyConfig):
     # simulation settings
     n_players = 4
     n_moves = 120
-    n_simulations = 1000
-    seed = None  #
+    n_simulations = 5 # Total number of games simulated
+    MCTS_simulations = 100 # Number of MCTS simulations does per turn 
+    seed = None  
     shuffle_players = True
     real_time = False  # Allow step by step execution via space/enter key
     num_threads = 16
@@ -33,8 +34,9 @@ class SimulationConfig(MonopolyConfig):
     show_map = True  # only for 1 game: show final board map
     show_result = True  # only for 1 game: show final money score
     show_rem_players = True
-    write_log = True  # write log with game events (log.txt file)
+    write_log = False  # write log with game events (log.txt file)
     write_mode = WriteMode.NET_WORTH
+    
 
 
 class GameRulesConfig(MonopolyConfig):
@@ -68,6 +70,7 @@ class PlayerBehaviourConfig(MonopolyConfig):
     build_randomly = False
     advanced_jail_strat = False
     random = False
+    mcts = False
 
 class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
     # players behaviour settings based on our self evaluated methods
@@ -85,6 +88,7 @@ class RuleBasedPlayerBehaviourConfig(MonopolyConfig):
     build_randomly = False
     advanced_jail_strat = True
     random = False
+    mcts = False
 
 class RandomPlayerBehaviourConfig(MonopolyConfig):
     # players behaviour settings, actions will be random
@@ -102,3 +106,22 @@ class RandomPlayerBehaviourConfig(MonopolyConfig):
     build_randomly = False
     advanced_jail_strat = False
     random = True
+    mcts = False
+
+class MCTSPlayerBehaviourConfig(MonopolyConfig):
+    # players behaviour settings, actions will be random
+    def __init__(self, id):
+        self.id = id
+
+    build_expensive = False
+    build_cheapest = False
+    refuse_property = ""  # refuse to buy this group
+    build_only_three_houses = False
+    unspendable_cash = 0  # unspendable money
+    unmortgage_coeff = 3  # repay mortgage if you have times this cash
+    refuse_to_trade = False  # willing to trade property
+    three_way_trade = True  # willing to trade property three-way
+    build_randomly = False
+    advanced_jail_strat = False
+    random = True
+    mcts = True
